@@ -47,13 +47,12 @@ sock.bind((IP,PORT))
 current_data: bytes = b''
 while True:
     data, addr = sock.recvfrom(4096)
+    current_data += data
     parsedPacket = pickle.loads(data)
-    current_data += parsedPacket.payload
-    print(current_data)
     if(parsedPacket.payload == b"DONE"):
         print("END OF EXEC! No more data to receive")
         data = pickle.loads(current_data)
-        writer.write(str(current_data))
+        writer.write(current_data)
         writer.close()
         print(parsedPacket.md5, calculate_md5("test_received.txt"))
         if (parsedPacket.md5 == calculate_md5("test_received.txt")):
