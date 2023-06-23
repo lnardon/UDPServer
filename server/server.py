@@ -34,7 +34,7 @@ class Packet:
         self.checksum = ""
         self.md5 = ""
     def __str__(self):
-            return f"Packet(seq={self.seq}, payload={self.payload})"
+        return f"Packet(seq={self.seq}, payload={self.payload}, checksum={self.checksum}, md5={self.md5})"
 
 
 writer = open("test_received.txt", "wb")
@@ -47,19 +47,17 @@ sock.bind((IP,PORT))
 current_data: bytes = b''
 while True:
     data, addr = sock.recvfrom(4096)
-    current_data += data
     parsedPacket = pickle.loads(data)
     if(parsedPacket.payload == b"DONE"):
         print("END OF EXEC! No more data to receive")
-        data = pickle.loads(current_data)
         writer.write(current_data)
         writer.close()
-        print(parsedPacket.md5, calculate_md5("test_received.txt"))
         if (parsedPacket.md5 == calculate_md5("test_received.txt")):
             print("MD5 CHECKSUM = File is NOT CORRUPTED!")
         sock.close()
         break
     else:
+        current_data += parsedPacket.payload
         isPacketValid = verifyChecksum(parsedPacket.checksum, parsedPacket.payload)
         if isPacketValid:
             print("*** CHECKSUM PACKET = Packet is NOT CORRUPTED! ***\n")
@@ -68,4 +66,4 @@ while True:
         else:
             print("!!!!! CHECKSUM PACKET = Packet IS CORRUPTED !!!!!\n\n")
         # sleep
-        time.sleep(0.1)
+        time.sleep(1)

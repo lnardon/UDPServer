@@ -20,7 +20,7 @@ class Packet:
         self.checksum = checksum
         self.md5 = md5
     def __str__(self):
-            return f"Packet(seq={self.seq}, payload={self.payload})"
+        return f"Packet(seq={self.seq}, payload={self.payload}, checksum={self.checksum}, md5={self.md5})"
 
 def checksumCalculator(data):
     checksum = zlib.crc32(data)
@@ -51,21 +51,39 @@ def calculate_md5(file_path):
     return md5_hash.hexdigest()
 
 def __init__():
+    packets_to_send = 1
+    window_size = 16
     with open("test.txt", 'rb') as file:
         sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,0)
         num_chunks = (file_size // 300) 
         packetID = 0
         while packetID < num_chunks + 1:
-            data = file.read(chunk_size)
-            if not data:
-                print("ENDED! No more data to send")
-                break
-            packet_to_send = Packet(packetID, data,checksumCalculator(data),"")
+            print("******** START OF PACKET BATCH ********\n")
+            print("Window Size Limit(Slow Start):", window_size , "packets")
+            print("Current Window Size:", packets_to_send , "packets")
+            if(packets_to_send ** 2 > window_size):
+                print("Current Control State: Congestion Avoidance\n")
+            else:
+                print("Current Control State: Slow Start\n")
+            for index in enumerate(range(1, packets_to_send + 1)):
+                data = file.read(chunk_size)
+                if not data:
+                    print("END! No more data to send")
+                    break
+                packet_to_send = Packet(packetID, data,checksumCalculator(data),"")
+                packetID+=1
 
-            sock.sendto(pickle.dumps(packet_to_send), (UDP_IP, UDP_PORT_TO_SEND))
-            data, address = sock.recvfrom(4096)
-            print("\n\n 2. Client received : ", data.decode('utf-8'), "\n\n")
-            packetID += 1
+                sock.sendto(pickle.dumps(packet_to_send), (UDP_IP, UDP_PORT_TO_SEND))
+                data, address = sock.recvfrom(4096)
+                print("- Client received : ", data.decode('utf-8'),"\n")
+            print("======== END OF PACKET BATCH ========", "\n\n\n\n\n")
+            if(packets_to_send ** 2 > window_size):
+                packets_to_send +=  1;
+            else:
+                if(packets_to_send == 1):
+                    packets_to_send += 1
+                else:
+                    packets_to_send = packets_to_send ** 2
         sock.sendto(pickle.dumps(Packet(-1, b"DONE", "",calculate_md5("test.txt"))), (UDP_IP, UDP_PORT_TO_SEND))
         sock.close()
 
